@@ -41,25 +41,27 @@ public class HomePage extends BasePage {
 
     }
 
-    ///////////////////////////////
-    // ADDED BY RUDY SALAS
-    ///////////////////////////////
-
-    // This is done by retrieving the 'gallery' of photos, matching the name value of each photo in order to find the
-    // correct option, then clicking that option.
+    /**
+     * Verify that the 'streak' counter increases when the user clicks the correct photo.
+     *
+     * This is done by retrieving the name of the individual to be found with the {@link #nameToBeFound()} element,
+     * whose text value is then passed through {@link #findPhoto(String)}. The findPhoto() method returns the photo
+     * element associated with the desired person. The photo element is then clicked. This method only asserts that the
+     * streak counter increases, we are not concerned with how much.
+     */
     public void validateClickingCorrectPhotoIncreasesStreakCounter() {
         waitForPageToLoad();
 
-        int count = getCurrentStreakCount();
+        // Retrieve the current streak count.
+        int startingCount = getCurrentStreakCount();
 
         // Find the photo that is correct and click it.
         findPhoto(nameToBeFound().getText()).click();
 
         waitForPageToLoad();
 
-        int countAfter = getCurrentStreakCount();
-
-        Assert.assertTrue(countAfter > count);
+        // Verify that the streak count has increased.
+        Assert.assertTrue(getCurrentStreakCount() > startingCount);
     }
 
     // This is done by selecting the correct photo for 3 consecutive attempts, which should set a streak. On the 4th
