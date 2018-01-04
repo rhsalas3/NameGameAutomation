@@ -44,7 +44,7 @@ public class WebTest {
                 .validateClickingCorrectPhotoIncreasesStreakCounter();
     }
 
-    // Verify that a  multiple “streak” counter resets after getting an incorrect answer.
+    // Verify that a multiple “streak” counter resets after getting an incorrect answer.
     @Test
     public void test_streak_counter_resets_after_incorrect_selection() {
         new HomePage(driver)

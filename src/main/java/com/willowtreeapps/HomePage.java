@@ -19,26 +19,107 @@ public class HomePage extends BasePage {
         super(driver);
     }
 
-    public void validateTitleIsPresent() {
-        WebElement title = driver.findElement(By.cssSelector("h1"));
-        Assert.assertTrue(title != null);
+    /**
+     * The label that displays the name of the person to be found within the gallery of photos.
+     *
+     * @return WebElement - the label containing the text, name of the person to be guessed.
+     */
+    private WebElement nameToBeFound() {
+        return driver.findElement(By.id("name"));
     }
 
+    /**
+     * The label that displays the 'streak' stat.
+     *
+     * @return WebElement - the label containing the number of consecutive correct guesses.
+     */
+    private WebElement streakCounter() {
+        return driver.findElement(By.className("streak"));
+    }
 
-    public void validateClickingFirstPhotoIncreasesTriesCounter() {
-        //Wait for page to load
-        waitForPageToLoad();
+    /**
+     * The label that displays the 'tries' stat.
+     *
+     * @return WebElement - the label containing the total number of tries.
+     */
+    private WebElement triesCounter() {
+        return driver.findElement(By.className("attempts"));
+    }
 
-        int count = Integer.parseInt(driver.findElement(By.className("attempts")).getText());
+    /**
+     * The label that displays the 'correct' stat.
+     *
+     * @return WebElement - the label containing the total number of correct guesses.
+     */
+    private WebElement correctCounter() {
+        return driver.findElement(By.className("correct"));
+    }
 
-        driver.findElement(By.className("photo")).click();
+    /**
+     * A helper method which allows time for the page to appear/load.
+     *
+     * If after the 6 second wait time the name to be guessed is not present the method will fail on an assertion.
+     */
+    private void waitForPageToLoad() {
+        sleep(6000);
 
-        waitForPageToLoad();
+        Assert.assertTrue(nameToBeFound().isDisplayed());
+    }
 
-        int countAfter = Integer.parseInt(driver.findElement(By.className("attempts")).getText());
+    /**
+     * A helper method which finds the photo within the gallery that matches a specified name.
+     *
+     * @param name String - the name of the person whose photo is to be found.
+     * @return WebElement - the clickable photo element belonging to the name specified.
+     */
+    private WebElement findPhoto(final String name) {
+        final String pathToElement = String.format("//div[text()='%s']/..", name);
 
-        Assert.assertTrue(countAfter > count);
+        return driver.findElement(By.xpath(pathToElement));
+    }
 
+    /**
+     * A helper method which compiles a list of the names associated with the photos displayed in the gallery.
+     *
+     * @return List - the names of those individuals whose photos are currently displayed in the gallery.
+     */
+    private List<String> retrieveGallery() {
+        final List<String> allNames = new ArrayList<>();
+        final List<WebElement> gallery = driver.findElements(By.className("name"));
+
+        // For each name element in the gallery, retrieve its text and add it to the list of names.
+        for (WebElement name : gallery) {
+            allNames.add(name.getText());
+        }
+
+        return allNames;
+    }
+
+    /**
+     * Retrieve the displayed value of the 'streak' counter.
+     *
+     * @return int - the value of the displayed number.
+     */
+    private int getCurrentStreakCount() {
+        return Integer.parseInt(streakCounter().getText());
+    }
+
+    /**
+     * Retrieve the displayed value of the 'tries' counter.
+     *
+     * @return int - the value of the displayed number.
+     */
+    private int getCurrentTriesCount() {
+        return Integer.parseInt(triesCounter().getText());
+    }
+
+    /**
+     * Retrieve the displayed value of the 'correct' counter.
+     *
+     * @return int - the value of the displayed number.
+     */
+    private int getCurrentCorrectCount() {
+        return Integer.parseInt(correctCounter().getText());
     }
 
     /**
@@ -64,9 +145,13 @@ public class HomePage extends BasePage {
         Assert.assertTrue(getCurrentStreakCount() > startingCount);
     }
 
-    // This is done by selecting the correct photo for 3 consecutive attempts, which should set a streak. On the 4th
-    // attempt we will click a photo that is not the correct one. Then we'll retrieve the streak count and assert that
-    // it is now reset to 0.
+    /**
+     * Verify that after a streak of correct guesses, the 'streak' counter resets to 0 upon the next incorrect guess.
+     *
+     * This is done by selecting the correct photo for 3 consecutive attempts, which should set a streak. On the 4th
+     * attempt we will click a photo that is not the correct one. Then we'll retrieve the streak count and assert that
+     * it is now reset to 0.
+     */
     public void validateStreakCounterResetsAfterIncorrectSelection() {
         final int resetValue     = 0;
         final int expectedStreak = 3;
@@ -74,7 +159,7 @@ public class HomePage extends BasePage {
         waitForPageToLoad();
 
         // Retrieve the current, starting steak count.
-        int startingStreak = getCurrentStreakCount();
+        final int startingStreak = getCurrentStreakCount();
 
         // Process 3 consecutive attempts, selecting the correct photo so that a streak is started.
         for (int i = 1; i <= expectedStreak; i++) {
@@ -91,8 +176,10 @@ public class HomePage extends BasePage {
         // Verify that the streak is 3 more than the starting value.
         Assert.assertEquals(startingStreak + expectedStreak, getCurrentStreakCount());
 
-        // Now select a name that is not the correct option. To do this we will gather the list of names in the gallery
-        // and remove the correct option. Then we'll click the first photo that is not the correct one.
+        /*
+         * Now select a name that is not the correct option. To do this we will gather the list of names in the gallery
+         * and remove the correct option. Then we'll click the first photo that is not the correct one.
+         */
         List<String> allIncorrectOptions = retrieveGallery();
         allIncorrectOptions.remove(nameToBeFound().getText());
         findPhoto(allIncorrectOptions.get(0)).click();
@@ -101,15 +188,28 @@ public class HomePage extends BasePage {
         Assert.assertEquals(resetValue, getCurrentStreakCount());
     }
 
-    // Verify that after 10 random selections the correct counters are being incremented for tries and correct counters
+    /**
+     * Verify that the 'tries' and 'correct' counters are incrementing as expected.
+     *
+     * This method will complete 10 random attempts at the game and keep a count of how many of the random selections
+     * are correct. This is done by generating a random number between 0 and the last index of the number of photos
+     * remaining in the gallery after any one of the attempts. The photo at that random index will then be matched to
+     * the name of the person to be guessed. If it matches, a counter is incremented for number of correct guesses and
+     * the tries continue. If the random guess does not match, then we'll remove that name from the gallery and generate
+     * a new random index to continue. At the end of the 10 attempts we will compare the actual, displayed value of the
+     * 'correct' counter with that of the number we expect from the attempts and verify that the 'tries' counter has
+     * increased by 10.
+     */
     public void validateTriesAndCorrectSelectionCounters() {
         waitForPageToLoad();
 
-        // Set up the running counter of the number of tries and correct selections.
+        // Setup the expected data.
         int attempts                 = 10;
-        int startingNumOfTries       = Integer.parseInt(triesCounter().getText());
-        int startingNumCorrect       = Integer.parseInt(correctCounter().getText());
         int numCorrectDuringAttempts = 0;
+
+        // Set up the running counter of the number of tries and correct selections.
+        int startingNumOfTries = getCurrentTriesCount();
+        int startingNumCorrect = getCurrentCorrectCount();
 
         // Keep up with the gallery of selections.
         List<String> remainingPhotosToSelect = retrieveGallery();
@@ -135,18 +235,24 @@ public class HomePage extends BasePage {
                 findPhoto(remainingPhotosToSelect.get(randomSelection)).click();
                 remainingPhotosToSelect.remove(randomSelection); // Remove the already selected photo from the running list.
             }
-
         }
 
         // Verify that the tries counter incremented correctly.
         final int expectedTotalNumOfTries = startingNumOfTries + attempts;
-        Assert.assertEquals(expectedTotalNumOfTries, Integer.parseInt(triesCounter().getText()));
+        Assert.assertEquals(expectedTotalNumOfTries, getCurrentTriesCount());
 
         // Verify that the 'X correct' counter incremented correctly.
         final int expectedTotalNumOfCorrectSelections = startingNumCorrect + numCorrectDuringAttempts;
-        Assert.assertEquals(expectedTotalNumOfCorrectSelections, Integer.parseInt(correctCounter().getText()));
+        Assert.assertEquals(expectedTotalNumOfCorrectSelections, getCurrentCorrectCount());
     }
 
+    /**
+     * Verify that the name to be guessed and the gallery of photos changes after a correct guess.
+     *
+     * This is done by storing the initial name to be guessed and all of the names in the photo gallery at the start of
+     * the test. The correct photo will then be selected and assertions will be made against the previous name and
+     * gallery to ensure that they are not the same.
+     */
     public void validateNameAndGalleryChangesAfterCorrectGuess() {
         waitForPageToLoad();
 
@@ -170,54 +276,24 @@ public class HomePage extends BasePage {
         Assert.assertNotEquals("Expected the gallery of photos to change.", firstGallery, retrieveGallery());
     }
 
-    // The name of the person to be selected.
-    private WebElement nameToBeFound() {
-        return driver.findElement(By.id("name"));
+    public void validateTitleIsPresent() {
+        WebElement title = driver.findElement(By.cssSelector("h1"));
+        Assert.assertTrue(title != null);
     }
 
-    // The streak counter.
-    private WebElement streakCounter() {
-        return driver.findElement(By.className("streak"));
-    }
+    public void validateClickingFirstPhotoIncreasesTriesCounter() {
+        //Wait for page to load
+        waitForPageToLoad();
 
-    // The total number of tries counter.
-    private WebElement triesCounter() {
-        return driver.findElement(By.className("attempts"));
-    }
+        int count = getCurrentTriesCount();
 
-    // The total number correct counter.
-    private WebElement correctCounter() {
-        return driver.findElement(By.className("correct"));
-    }
+        driver.findElement(By.className("photo")).click();
 
-    // Allows time for the page to appear/load. If after the wait time the name to be guessed is not present, the method
-    // will fail on an assertion.
-    private void waitForPageToLoad() {
-        sleep(6000);
+        waitForPageToLoad();
 
-        Assert.assertTrue(nameToBeFound().isDisplayed());
-    }
+        int countAfter = getCurrentTriesCount();
 
-    // Find the photo within the gallery that matches the given name.
-    private WebElement findPhoto(final String name) {
-        final String pathToElement = String.format("//div[text()='%s']/..", name);
-
-        return driver.findElement(By.xpath(pathToElement));
-    }
-
-    private List<String> retrieveGallery() {
-        final List<String> allNames = new ArrayList<>();
-        final List<WebElement> gallery = driver.findElements(By.className("name"));
-
-        for (WebElement name : gallery) {
-            allNames.add(name.getText());
-        }
-
-        return allNames;
-    }
-
-    private int getCurrentStreakCount() {
-        return Integer.parseInt(streakCounter().getText());
+        Assert.assertTrue(countAfter > count);
     }
 
 }
